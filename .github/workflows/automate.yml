@@ -1,0 +1,56 @@
+name: Automated Titanic ML Pipeline
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily at 12:00 AM UTC
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write   # ✅ allows pushing back to repo
+
+    steps:
+      # 1. Checkout repo
+      - uses: actions/checkout@v3
+
+      # 2. Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 4. Train the model
+      - name: Run training
+        run: python train.py
+
+      # 5. Parse logs (optional script)
+      - name: Parse logs
+        run: python parse_logs.py || echo "No logs to parse"
+
+      # 6. Drift detection (optional script)
+      - name: Run drift detection
+        run: python monitor.py || echo "Drift detection skipped"
+
+      # 7. Commit updated files
+      - name: Commit updated files
+        run: |
+          git config user.name "Prasad Jadhav"
+          git config user.email "prasadmjadhav6959@gmail.com"
+          git add titanic_model.pkl le_sex.pkl le_embarked.pkl current_inputs.csv drift_report.txt || echo "No files to add"
+          git commit -m "Update model and drift report" || echo "No changes to commit"
+
+      # 8. Push changes with GitHub token
+      - name: Push changes
+        run: |
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/prasadmjadhav6959/titanic-streamlit.git HEAD:main
